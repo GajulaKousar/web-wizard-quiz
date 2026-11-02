@@ -2,7 +2,8 @@ const express=require('express'),bcrypt=require('bcryptjs'),fs=require('fs'),pat
 // ---- database: Turso (hosted libSQL) in production, a local file for development
 let DB_URL=process.env.TURSO_DATABASE_URL||process.env.DB_URL||'file:wizard.db';const local=DB_URL.startsWith('file:');
 if(!local)DB_URL=DB_URL.replace(/^libsql:\/\//,'https://');
-const {createClient}=require(local?'@libsql/client':'@libsql/client/web');
+let createClient;if(local){createClient=require('@libsql/client').createClient}else{createClient=require('@libsql/client/web').createClient}
+if(process.env.VERCEL&&local)throw new Error('TURSO_DATABASE_URL is not set');
 const db=createClient({url:DB_URL,authToken:process.env.TURSO_AUTH_TOKEN});
 const rows=async(sql,a=[])=>{const r=await db.execute({sql,args:a});return r.rows.map(x=>Object.fromEntries(r.columns.map((c,i)=>[c,x[i]])))};
 const one=async(sql,a)=>(await rows(sql,a))[0];const run=(sql,a=[])=>db.execute({sql,args:a});
@@ -49,7 +50,7 @@ const setCookie=(r,v,age)=>r.setHeader('Set-Cookie',`ww=${v}; HttpOnly; SameSite
 // ---- app
 const app=express();app.set('trust proxy',1);app.disable('x-powered-by');app.use(express.json({limit:'20kb'}));
 app.use((q,r,n)=>{r.set({'Content-Security-Policy':"default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'none'",'X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','Cache-Control':'no-store'});n()});
-app.use('/api',A(async(q,r,n)=>{if(!SECRET)return r.status(500).json({error:'SESSION_SECRET is not configured.'});await init();q.session=readSession(q);n()}));
+app.use('/api',A(async(q,r,n)=>{if(!SECRET)return r.status(500).json({error:'SESSION_SECRET is not configured.'});try{await init()}catch(e){console.error('init failed',e);return r.status(500).json({error:'Database connection failed. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in Vercel, then redeploy.'})}q.session=readSession(q);n()}));
 const needP=(q,r,n)=>q.session.role==='participant'?n():r.status(401).json({error:'Please log in.'});
 const needA=(q,r,n)=>q.session.role==='admin'?n():r.status(401).json({error:'Admin access required.'});
 const startSession=(r,o)=>{setCookie(r,sign({...o,exp:now()+864e5}),86400);r.json({ok:true,role:o.role})};
