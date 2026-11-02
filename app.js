@@ -4,7 +4,7 @@ const h=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt
 const $=s=>app.querySelector(s),$$=s=>[...app.querySelectorAll(s)],go=x=>{location.hash=x};
 const T=()=>Date.now()+off;
 async function api(p,m='GET',b){let r;try{r=await fetch('/api'+p,{method:m,headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined,credentials:'same-origin'})}catch(e){throw new Error('Network error. Check your connection and try again.')}
- const j=await r.json().catch(()=>({}));if(j.now)off=j.now-Date.now();if(r.status===401){me=null;go('#/');throw new Error(j.error||'Please log in.')}if(!r.ok){const e=new Error(j.error||'Request failed');e.data=j;throw e}return j}
+ const j=await r.json().catch(()=>({}));if(j.now)off=j.now-Date.now();if(r.status===401){me=null;go('#/');throw new Error(j.error||'Please log in.')}if(!r.ok){const e=new Error(j.error||('Request failed (HTTP '+r.status+')'));e.data=j;throw e}return j}
 const fmt=s=>{s=Math.max(0,Math.floor(s));const a=Math.floor(s/3600),b=Math.floor(s%3600/60),c=s%60,p=n=>String(n).padStart(2,'0');return(a?a+':':'')+p(b)+':'+p(c)};
 const dt=t=>t?new Date(t).toLocaleString():'-';const lab=s=>({not_started:'Not started',entered:'Entered',in_progress:'In progress',completed:'Completed',submitted:'Submitted',timed_out:'Timed out',not_entered:'Not entered'}[s]||s);
 function view(html,bg){clearInterval(tk);document.body.className=bg||'';app.innerHTML=html;window.scrollTo(0,0)}
